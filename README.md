@@ -2,6 +2,7 @@
 Scrapper of financial information from stockrow.com about any given list of puclicly traded companies
 @author Ron Levi
 @version 1.0.0
+python interpreter version: 3.6
 
 this code takes a list of compaines provided by the user, and based on the list, collect financial data.
 Data is formally published by the company itself according to SEC (U.S. Securities and Exchange Commission) regulations.
