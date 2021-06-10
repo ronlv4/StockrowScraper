@@ -12,29 +12,34 @@ adjust numbers to millions or thousands
 improve efficiency
 improve generic format
 '''
+import xlsxwriter
+
 import requests
 import csv
 import json
 import ast
+import pandas as pd
+import numpy as np
+import openpyxl
 
-indicators = requests.get("https://stockrow.com/api/indicators.json")
-statement = ["Cash+Flow", "Balance+Sheet", "Income+Statement", "Metrics", "Growth"]
-indicators = indicators.json()
-allStockrowCodes = {}
-for dict in indicators:
-    allStockrowCodes[dict['id']] = dict['name']
+
+def create_id_name_dict(indicators):
+    stockrow_codes = {}
+    for indicators_dict in indicators:
+        stockrow_codes[indicators_dict['id']] = indicators_dict['name']
+    return stockrow_codes
 
 
 def get_companies_tickers():
     # from sp500 csv file get a list of all companies
     # create list where first odd index is ticker and even is company name
-    sp500_list = []
-    my_file = open('sp500.csv', mode='r')  # prepare a file containing list of companies tickers to collect data
-    for (row) in my_file:
-        parser = ast.literal_eval(row)
-        sp500_list.append(parser[0])
-        sp500_list.append(parser[1])
-    return sp500_list
+    sp500_companies = {}
+    df = pd.read_excel('sp500.xlsx')
+    ticker_symbols = df['Ticker'].values
+    company_names = df['Name'].values
+    for i in range(len(ticker_symbols)):
+        sp500_companies[ticker_symbols[i]] = company_names[i]
+    return sp500_companies
 
 
 def getfields(response):
@@ -63,23 +68,28 @@ def write_company_data(ticker, state):
         writer.writeheader()
         for dicts in datalst:
             try:
-                dicts['id'] = allStockrowCodes[dicts['id']]
+                dicts['id'] = stockrow_codes[dicts['id']]
                 writer.writerow(dicts)
             except KeyError:
                 pass
 
 
+indicators = requests.get("https://stockrow.com/api/indicators.json")
+statements = ["Cash+Flow", "Balance+Sheet", "Income+Statement", "Metrics", "Growth"]
+indicators = indicators.json()
+stockrow_codes = create_id_name_dict(indicators)
+
 with open('allCompanies.csv', mode='w') as cleaning:
     cleaning.writelines("This is a webscrapper by Ron Levi\n\n")
-companiesTickers = get_companies_tickers()
-companiesTickers = companiesTickers[2:]
+
+companiesTickers = list(get_companies_tickers().values())
 for index, company in enumerate(companiesTickers):
     if index % 2 == 0:
         with open('allCompanies.csv', mode='a') as cleaning:
-            cleaning.writelines("Company Name: {}\n Ticker: {}\n\n".format(companiesTickers[index+1], company))
-        for state in statement:
+            cleaning.writelines("Company Name: {}\n Ticker: {}\n\n".format(companiesTickers[index + 1], company))
+        for state in statements:
             write_company_data(company, state)
     if index % 50 == 0:
-        print(f"{index/2} companies scraped so far", end=" ,")
-        print(f"{len(companiesTickers)/2} left.")
+        print(f"{index / 2} companies scraped so far", end=" ,")
+        print(f"{len(companiesTickers) / 2} left.")
 cleaning.close()
